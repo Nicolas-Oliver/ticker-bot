@@ -18,13 +18,6 @@ MANAGEMENT_CHANNEL = os.environ.get("MANAGEMENT_CHANNEL")
 if not DISCORD_TOKEN:
     raise RuntimeError("Environment variable DISCORD_TOKEN is required")
 
-if not MANAGEMENT_CHANNEL:
-    raise RuntimeError("Environment variable MANAGEMENT_CHANNEL is required")
-
-# Validate MANAGEMENT_CHANNEL is a valid Discord snowflake (numeric ID)
-if not MANAGEMENT_CHANNEL.isdigit():
-    raise RuntimeError(f"MANAGEMENT_CHANNEL must be a numeric Discord channel ID (snowflake), got: {MANAGEMENT_CHANNEL}")
-
 # Brain/Bot State
 bot = Bot()
 

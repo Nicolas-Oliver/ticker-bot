@@ -20,5 +20,6 @@ def notify_bot(interaction: discord.Interaction, message: str):
     logger.info(f"{message}", extra={"user": interaction.user.name, "id": interaction.user.id})
 
 async def notify_admin(interaction: discord.Interaction, bot: Bot,message: str):
-    await bot.management_channel.send(f"<@{ADMIN}>, {message}")
+    if bot.management_channel and ADMIN:
+        await bot.management_channel.send(f"<@{ADMIN}>, {message}")
     logger.critical(message, extra={"user": interaction.user.name, "id": interaction.user.id})
