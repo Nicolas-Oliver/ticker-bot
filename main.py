@@ -4,25 +4,38 @@ import sys
 import asyncio
 import traceback
 
-from aiohttp import web
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # DigitalOcean commonly sets PORT; default to 8080
 PORT = int(os.environ.get("PORT", "8080"))
 
-# Health check endpoint for DigitalOcean
-async def health_check(request):
-    return web.Response(text="OK", status=200)
-
 async def start_health_check_server():
     """Start HTTP health check server (binds 0.0.0.0:$PORT)."""
     try:
-        app = web.Application()
-        app.router.add_get('/', health_check)
-        app.router.add_get('/health', health_check)
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, '0.0.0.0', PORT)
-        await site.start()
+        class HealthHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path in ("/", "/health"):
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    self.wfile.write(b"OK")
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+
+            def log_message(self, format, *args):
+                # Silence default request logs
+                return
+
+        httpd = HTTPServer(("0.0.0.0", PORT), HealthHandler)
+
+        def serve():
+            httpd.serve_forever()
+
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
+
         print(f"✓ Health check server started on 0.0.0.0:{PORT}")
         return True
     except Exception as e:
