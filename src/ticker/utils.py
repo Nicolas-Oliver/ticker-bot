@@ -7,20 +7,39 @@ from consts import NETWORK_ID, HEADERS, SEARCH_URL
 from src.logger import notify_bot, notify_admin
 
 async def get_currencies(interaction, bot):
-    algo_data = None
-    url = "https://api.vestigelabs.org/assets/price"
-    conn = aiohttp.TCPConnector(limit=None, ttl_dns_cache=300)
-    session = aiohttp.ClientSession(connector=conn)
-    async with session.get(url=url, headers=HEADERS) as response:
-        if response.status == 200:
-            algo_data = await response.json()
-        else:
-            await notify_admin(interaction, bot, f"error processing algo price :: {response}")
-            await session.close()
-            return None
-    await session.close()
+    currencies = {}
+    
+    # Define assets to fetch: Currency Name -> Asset ID
+    # USDC: 31566704, EURS: 227855942
+    assets = {
+        "USD": 31566704,
+        "EUR": 227855942
+    }
 
-    return algo_data
+    try:
+        conn = aiohttp.TCPConnector(limit=None, ttl_dns_cache=300)
+        async with aiohttp.ClientSession(connector=conn) as session:
+            for currency, asset_id in assets.items():
+                url = f"https://api.vestigelabs.org/assets/search?network_id={NETWORK_ID}&query={asset_id}&limit=1"
+                async with session.get(url=url, headers=HEADERS) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        results = data.get("results", [])
+                        if results:
+                            # Price is ALGOs per unit of currency (e.g. 3.3 Algos per USDC)
+                            price_in_algo = results[0]["price"]
+                            if price_in_algo > 0:
+                                currencies[currency] = 1.0 / price_in_algo
+                            else:
+                                currencies[currency] = 0
+                    else:
+                        print(f"Error fetching {currency}: {response.status}")
+        
+    except Exception as e:
+        await notify_admin(interaction, bot, f"error processing currencies :: {e}")
+        return None
+
+    return currencies
 
 async def get_ticker_candles(interaction, token: TokenInfo, start_num_days_ago):
     now = int(time.time())

@@ -19,8 +19,9 @@ async def ticker_workflow(interaction: discord.Interaction, bot: Bot, ticker: st
         if currencies == None:
             await interaction.edit_original_response(content="Problem pulling algos current price.")
             return None
-        del currencies["BTC"] # its like allllll zeros
+        # del currencies["BTC"] # its like allllll zeros
         currencies["ALGO"] = 1
+
         
         # Get ticker/token data
         token: TokenInfo = await get_ticker_info(interaction, bot, ticker.lower())
