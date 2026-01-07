@@ -20,7 +20,9 @@ MANAGEMENT_CHANNEL = os.environ.get("MANAGEMENT_CHANNEL")
 
 # Fail fast if required env vars are missing so deployments surface a clear error
 if not DISCORD_TOKEN:
-    raise RuntimeError("Environment variable DISCORD_TOKEN is required")
+    print("FATAL: Environment variable DISCORD_TOKEN is required")
+    # Don't exit yet, let health check start so we can see logs
+    # raise RuntimeError("Environment variable DISCORD_TOKEN is required")
 
 # Brain/Bot State
 bot = Bot()
@@ -39,13 +41,6 @@ client = myclient(intents=intents)
 tree = app_commands.CommandTree(client)
 
 client.on_ready = on_ready_event
-
-try:
-    load_the_commands(client, tree, bot)
-except Exception as e:
-    print(f"ERROR loading commands: {e}")
-    traceback.print_exc()
-    sys.exit(1)
 
 # Health check endpoint for DigitalOcean
 async def health_check(request):
@@ -69,8 +64,14 @@ async def start_health_check_server():
 
 async def run_bot():
     """Run the Discord bot"""
+    if not DISCORD_TOKEN:
+        print("✗ ERROR: Cannot start bot, DISCORD_TOKEN is missing")
+        while True:
+            await asyncio.sleep(60) # Keep container alive
+            
     while True:
         try:
+            print("Attempting to connect to Discord...")
             await client.start(DISCORD_TOKEN)
         except Exception as e:
             print(f"✗ ERROR running Discord bot: {e}")
@@ -85,26 +86,44 @@ async def run_bot():
 async def main():
     """Run health check server and Discord bot concurrently"""
     try:
+        # 1. Start health check server FIRST to ensure container stays up
         print("Starting health check server...")
         health_started = await start_health_check_server()
         
-        if health_started:
-            print("Starting Discord bot...")
-            # Run bot with retries while health server stays up
-            await run_bot()
-        else:
-            print("ERROR: Could not start health check server")
-            sys.exit(1)
+        if not health_started:
+            print("CRITICAL: Health check server failed to start, but continuing to try to run bot...")
+
+        # 2. Try loading commands safely
+        try:
+            print("Loading commands...")
+            load_the_commands(client, tree, bot)
+            print("✓ Commands loaded successfully")
+        except Exception as e:
+            print(f"✗ ERROR loading commands: {e}")
+            traceback.print_exc()
+            print("Continuing startup despite command load failure...")
+
+        # 3. Start Discord bot (runs forever)
+        print("Starting Discord bot...")
+        await run_bot()
+            
     except Exception as e:
-        print(f"ERROR in main: {e}")
+        print(f"FATAL ERROR in main: {e}")
         traceback.print_exc()
-        sys.exit(1)
+        # Sleep to keep container logs visible
+        while True:
+            await asyncio.sleep(60)
 
 # Run both bot and health check server
 if __name__ == "__main__":
     try:
         asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
     except Exception as e:
-        print(f"FATAL ERROR: {e}")
+        print(f"FATAL ERROR at root: {e}")
         traceback.print_exc()
-        sys.exit(1)
+        # Last ditch effort to keep container alive for logs if asyncio fails
+        import time
+        while True:
+            time.sleep(60)
