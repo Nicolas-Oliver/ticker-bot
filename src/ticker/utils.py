@@ -8,7 +8,7 @@ from src.logger import notify_bot, notify_admin
 
 async def get_currencies(interaction, bot):
     algo_data = None
-    url = "https://free-api.vestige.fi/currency/prices"
+    url = "https://api.vestigelabs.org/assets/price"
     conn = aiohttp.TCPConnector(limit=None, ttl_dns_cache=300)
     session = aiohttp.ClientSession(connector=conn)
     async with session.get(url=url, headers=HEADERS) as response:
@@ -37,7 +37,7 @@ async def get_ticker_candles(interaction, token: TokenInfo, start_num_days_ago):
 
     start = now - start_num_days_ago * 24 * 3600  # 7 days in seconds
 
-    url = (f"https://indexer.vestige.fi/assets/{token.asset_id}/candles?"
+    url = (f"https://api.vestigelabs.org/assets/{token.asset_id}/candles?"
            f"network_id={NETWORK_ID}&interval={interval}&start={start}"
            f"&denominating_asset_id=0&volume_in_denominating_asset=false")
     
