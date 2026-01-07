@@ -3,8 +3,8 @@ import os
 import sys
 import asyncio
 import traceback
-
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # DigitalOcean commonly sets PORT; default to 8080
@@ -44,14 +44,11 @@ async def start_health_check_server():
         return False
 
 async def run_bot_forever():
-    """Import and run the Discord bot in a retry loop.
-
-    Importing discord/bot modules happens *after* the health server is up,
-    so readiness probes won't fail due to early import errors.
-    """
+    """Run bot loops forever, even if imports fail."""
     while True:
         try:
-            # Import late to ensure health server is already running
+            # Import dependencies inside the loop
+            # If deps are missing, this loop will keep printing errors but container stays UP
             import discord
             from discord import app_commands
             from dotenv import load_dotenv
@@ -65,8 +62,8 @@ async def run_bot_forever():
             management_channel = os.environ.get("MANAGEMENT_CHANNEL")
 
             if not discord_token:
-                print("✗ ERROR: DISCORD_TOKEN is missing; retrying in 30s")
-                await asyncio.sleep(30)
+                print("✗ ERROR: DISCORD_TOKEN is missing (retrying in 60s)")
+                await asyncio.sleep(60)
                 continue
 
             bot = Bot()
@@ -94,8 +91,7 @@ async def run_bot_forever():
             print("Attempting to connect to Discord...")
             await client.start(discord_token)
 
-            # If start returns normally (e.g., clean shutdown), restart
-            print("Discord bot stopped; restarting in 10s")
+            print("Discord bot stopped unexpectedly (restarting in 10s)")
             await asyncio.sleep(10)
 
         except Exception as e:
@@ -103,38 +99,39 @@ async def run_bot_forever():
             traceback.print_exc()
             await asyncio.sleep(10)
 
+
+def keep_alive():
+    """Fallback loop to keep container alive if asyncio loop dies."""
+    while True:
+        time.sleep(60)
+
 async def main():
     """Start health server, then run the bot forever."""
     try:
-        # 1. Start health check server FIRST to ensure container stays up
+        # 1. Start health check server FIRST
         print("Starting health check server...")
         health_started = await start_health_check_server()
-        
         if not health_started:
-            print("CRITICAL: Health check server failed to start, but continuing to try to run bot...")
+            print("CRITICAL: Health check server failed to start")
 
-        # 2. Start Discord bot (runs forever, with retries)
-        print("Starting Discord bot...")
-        bot_task = asyncio.create_task(run_bot_forever())
-        await bot_task
-            
+        # 2. Run bot forever
+        print("Starting Discord bot loop...")
+        await run_bot_forever()
+
     except Exception as e:
         print(f"FATAL ERROR in main: {e}")
         traceback.print_exc()
-        # Sleep to keep container logs visible
+        # Fallback to keep-alive loop so container logs are visible
         while True:
             await asyncio.sleep(60)
 
-# Run both bot and health check server
 if __name__ == "__main__":
     try:
+        # Run main asyncio loop
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
     except Exception as e:
         print(f"FATAL ERROR at root: {e}")
         traceback.print_exc()
-        # Last ditch effort to keep container alive for logs if asyncio fails
-        import time
-        while True:
-            time.sleep(60)
+        keep_alive()
