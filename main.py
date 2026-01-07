@@ -1,6 +1,8 @@
 ### External Imports
 import discord, os
 from discord import app_commands
+import asyncio
+from aiohttp import web
 
 ### Internal Imports
 # Core
@@ -38,4 +40,22 @@ client.on_ready = on_ready_event
 
 load_the_commands(client, tree, bot)
 
-client.run(DISCORD_TOKEN)
+# Health check endpoint for DigitalOcean
+async def health_check(request):
+    return web.Response(text="OK", status=200)
+
+async def run_bot_with_health_check():
+    # Start health check server
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    await site.start()
+    print("Health check server started on port 8080")
+    
+    # Run Discord bot
+    await client.start(DISCORD_TOKEN)
+
+# Run both bot and health check server
+asyncio.run(run_bot_with_health_check())

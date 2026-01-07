@@ -9,5 +9,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Run the application
-CMD ["python", "main.py"]
+# Expose port for health checks (bot doesn't listen on this, but required for DigitalOcean)
+EXPOSE 8080
+
