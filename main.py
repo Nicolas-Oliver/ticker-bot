@@ -14,6 +14,10 @@ load_dotenv()
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 MANAGEMENT_CHANNEL = os.environ.get("MANAGEMENT_CHANNEL")
 
+# Fail fast if the token is missing so deployments surface a clear error
+if not DISCORD_TOKEN:
+    raise RuntimeError("Environment variable DISCORD_TOKEN is required")
+
 # Brain/Bot State
 bot = Bot()
 
