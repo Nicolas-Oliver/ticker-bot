@@ -108,16 +108,17 @@ async def run_bot_forever():
             print("Discord bot stopped unexpectedly (restarting in 10s)", flush=True)
             await asyncio.sleep(10)
 
-        except Exception as e:
-            print(f"✗ ERROR running Discord bot: {e}", flush=True)
+        except BaseException as e:
+            print(f"✗ CRITICAL ERROR running Discord bot: {e}", flush=True)
             traceback.print_exc()
             await asyncio.sleep(10)
 
 
 def keep_alive():
     """Fallback loop to keep container alive if asyncio loop dies."""
+    print("!! Entering infinite keep_alive loop to prevent container exit !!", flush=True)
     while True:
-        time.sleep(60)
+        time.sleep(3600)
 
 async def main():
     """Run the bot forever."""
@@ -137,7 +138,8 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
-    except Exception as e:
+    except BaseException as e:
         print(f"FATAL ERROR at root: {e}", flush=True)
         traceback.print_exc()
+    finally:
         keep_alive()
