@@ -69,12 +69,18 @@ async def start_health_check_server():
 
 async def run_bot():
     """Run the Discord bot"""
-    try:
-        await client.start(DISCORD_TOKEN)
-    except Exception as e:
-        print(f"✗ ERROR running Discord bot: {e}")
-        traceback.print_exc()
-        raise
+    while True:
+        try:
+            await client.start(DISCORD_TOKEN)
+        except Exception as e:
+            print(f"✗ ERROR running Discord bot: {e}")
+            traceback.print_exc()
+            # brief backoff before retry to avoid tight crash loop
+            await asyncio.sleep(10)
+        else:
+            # If start returns normally (e.g., shutdown), break loop
+            print("Discord bot stopped; restarting in 10s")
+            await asyncio.sleep(10)
 
 async def main():
     """Run health check server and Discord bot concurrently"""
@@ -84,11 +90,8 @@ async def main():
         
         if health_started:
             print("Starting Discord bot...")
-            # Run bot in background while keeping health check running
+            # Run bot with retries while health server stays up
             await run_bot()
-            # If run_bot exits normally, treat as failure so container doesn't exit 0 silently
-            print("Discord bot stopped unexpectedly; exiting")
-            sys.exit(1)
         else:
             print("ERROR: Could not start health check server")
             sys.exit(1)
