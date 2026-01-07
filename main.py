@@ -74,6 +74,7 @@ async def run_bot():
     except Exception as e:
         print(f"✗ ERROR running Discord bot: {e}")
         traceback.print_exc()
+        raise
 
 async def main():
     """Run health check server and Discord bot concurrently"""
@@ -85,6 +86,9 @@ async def main():
             print("Starting Discord bot...")
             # Run bot in background while keeping health check running
             await run_bot()
+            # If run_bot exits normally, treat as failure so container doesn't exit 0 silently
+            print("Discord bot stopped unexpectedly; exiting")
+            sys.exit(1)
         else:
             print("ERROR: Could not start health check server")
             sys.exit(1)
