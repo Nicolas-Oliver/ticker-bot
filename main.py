@@ -3,6 +3,8 @@ import discord, os
 from discord import app_commands
 import asyncio
 from aiohttp import web
+import sys
+import traceback
 
 ### Internal Imports
 # Core
@@ -38,7 +40,12 @@ tree = app_commands.CommandTree(client)
 
 client.on_ready = on_ready_event
 
-load_the_commands(client, tree, bot)
+try:
+    load_the_commands(client, tree, bot)
+except Exception as e:
+    print(f"ERROR loading commands: {e}")
+    traceback.print_exc()
+    sys.exit(1)
 
 # Health check endpoint for DigitalOcean
 async def health_check(request):
@@ -46,25 +53,51 @@ async def health_check(request):
 
 async def start_health_check_server():
     """Start HTTP health check server on port 8080"""
-    app = web.Application()
-    app.router.add_get('/', health_check)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
-    await site.start()
-    print("Health check server started on port 8080")
+    try:
+        app = web.Application()
+        app.router.add_get('/', health_check)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, '0.0.0.0', 8080)
+        await site.start()
+        print("✓ Health check server started on port 8080")
+        return True
+    except Exception as e:
+        print(f"✗ ERROR starting health check server: {e}")
+        traceback.print_exc()
+        return False
 
 async def run_bot():
     """Run the Discord bot"""
-    await client.start(DISCORD_TOKEN)
+    try:
+        await client.start(DISCORD_TOKEN)
+    except Exception as e:
+        print(f"✗ ERROR running Discord bot: {e}")
+        traceback.print_exc()
 
 async def main():
     """Run health check server and Discord bot concurrently"""
-    # Start health check server first
-    await start_health_check_server()
-    # Then start Discord bot (this will run indefinitely)
-    await run_bot()
+    try:
+        print("Starting health check server...")
+        health_started = await start_health_check_server()
+        
+        if health_started:
+            print("Starting Discord bot...")
+            # Run bot in background while keeping health check running
+            await run_bot()
+        else:
+            print("ERROR: Could not start health check server")
+            sys.exit(1)
+    except Exception as e:
+        print(f"ERROR in main: {e}")
+        traceback.print_exc()
+        sys.exit(1)
 
-# Run both bot and health check server concurrently
+# Run both bot and health check server
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print(f"FATAL ERROR: {e}")
+        traceback.print_exc()
+        sys.exit(1)
