@@ -12,3 +12,7 @@ COPY . .
 # Expose port for health checks (bot doesn't listen on this, but required for DigitalOcean)
 EXPOSE 8080
 
+# Explicitly set the start command
+CMD ["python", "-u", "main.py"]
+
+
