@@ -5,7 +5,7 @@ from src.Bot import Bot
 # Logic to pull from .env
 from dotenv import load_dotenv
 load_dotenv()
-LOG_LEVEL = os.environ.get("LOG_LEVEL")
+LOG_LEVEL = (os.environ.get("LOG_LEVEL") or "INFO").upper()
 ADMIN = os.environ.get("ADMIN")
 
 logging.getLogger('discord').propagate = False

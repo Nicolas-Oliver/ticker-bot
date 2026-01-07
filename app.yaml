@@ -1,6 +1,7 @@
 name: ticker-bot
-services:
+workers:
 - name: ticker-bot
+  environment_slug: python
   source:
     type: github
     repo: Nicolas-Oliver/ticker-bot
@@ -14,3 +15,6 @@ services:
   - key: MANAGEMENT_CHANNEL
     scope: RUN_AND_BUILD_TIME
     value: ${MANAGEMENT_CHANNEL}
+  - key: LOG_LEVEL
+    scope: RUN_AND_BUILD_TIME
+    value: INFO
