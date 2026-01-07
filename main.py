@@ -44,8 +44,8 @@ load_the_commands(client, tree, bot)
 async def health_check(request):
     return web.Response(text="OK", status=200)
 
-async def run_bot_with_health_check():
-    # Start health check server
+async def start_health_check_server():
+    """Start HTTP health check server on port 8080"""
     app = web.Application()
     app.router.add_get('/', health_check)
     runner = web.AppRunner(app)
@@ -53,9 +53,18 @@ async def run_bot_with_health_check():
     site = web.TCPSite(runner, '0.0.0.0', 8080)
     await site.start()
     print("Health check server started on port 8080")
-    
-    # Run Discord bot
+
+async def run_bot():
+    """Run the Discord bot"""
     await client.start(DISCORD_TOKEN)
 
-# Run both bot and health check server
-asyncio.run(run_bot_with_health_check())
+async def main():
+    """Run health check server and Discord bot concurrently"""
+    # Start health check server first
+    await start_health_check_server()
+    # Then start Discord bot (this will run indefinitely)
+    await run_bot()
+
+# Run both bot and health check server concurrently
+if __name__ == "__main__":
+    asyncio.run(main())
