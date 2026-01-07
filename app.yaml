@@ -1,0 +1,16 @@
+name: ticker-bot
+services:
+- name: ticker-bot
+  github:
+    repo: Nicolas-Oliver/ticker-bot
+    branch: main
+  build_command: pip install -r requirements.txt
+  run_command: python main.py
+  envs:
+  - key: DISCORD_TOKEN
+    scope: RUN_AND_BUILD_TIME
+    value: ${DISCORD_TOKEN}
+  - key: MANAGEMENT_CHANNEL
+    scope: RUN_AND_BUILD_TIME
+    value: ${MANAGEMENT_CHANNEL}
+  http_port: 8080
